@@ -58,8 +58,8 @@
 		57235FC62DB9480B00AB8247 = {
 			isa = PBXGroup;
 			children = (
-				57235FD12DB9480B00AB8247 /* SoundScapeSocial */,
 				57235FD02DB9480B00AB8247 /* Products */,
+				57235FD12DB9480B00AB8247 /* SoundScapeSocial */,
 			);
 			sourceTree = "<group>";
 		};
