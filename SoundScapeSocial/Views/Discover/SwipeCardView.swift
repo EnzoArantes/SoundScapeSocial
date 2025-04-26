@@ -1,3 +1,9 @@
+//
+//  SwipeCardView.swift
+//  SoundScapeSocial
+//
+//  Created by Enzo Arantes on 4/25/25.
+//
 import SwiftUI
 import UIKit
 

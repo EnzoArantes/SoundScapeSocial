@@ -18,7 +18,8 @@ class SpotifyAuthManager: NSObject, ObservableObject, SPTSessionManagerDelegate 
         accessToken = nil
         let scopes: SPTScope = [
             .userReadCurrentlyPlaying,
-            .userReadPlaybackState
+            .userReadPlaybackState,
+            .userLibraryModify   // new
         ]
         sessionManager.initiateSession(
             with: scopes,

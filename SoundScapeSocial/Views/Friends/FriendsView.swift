@@ -4,8 +4,7 @@
 //
 //  Created by Enzo Arantes on 4/25/25.
 //
-// FriendsView.swift
-// FriendsView.swift
+
 import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
@@ -77,26 +76,44 @@ class FriendsViewModel: ObservableObject {
     }
 
     private func listenForTrackUpdates(friendID: String) {
+        // remove any old listener
         trackListeners[friendID]?.remove()
-        trackListeners[friendID] = db.collection("public_tracks").document(friendID)
-            .addSnapshotListener { [weak self] snapshot, error in
-                guard let self = self, error == nil, let data = snapshot?.data() else { return }
-                guard let name = data["name"] as? String,
-                      let artist = data["artist"] as? String,
-                      let url = data["albumArtURL"] as? String else { return }
-                let item = CurrentlyPlayingTrack.Item(
-                    name: name,
-                    artists: [CurrentlyPlayingTrack.Artist(name: artist)],
-                    album: CurrentlyPlayingTrack.Album(images: [CurrentlyPlayingTrack.Album.Image(url: url)])
-                )
-                let track = CurrentlyPlayingTrack(item: item)
-                DispatchQueue.main.async {
-                    if let idx = self.friends.firstIndex(where: { $0.id == friendID }) {
-                        self.friends[idx].track = track
-                    }
-                }
+
+        // listen to the friend’s public_tracks doc
+        let listener = db
+          .collection("public_tracks")
+          .document(friendID)
+          .addSnapshotListener { [weak self] snapshot, _ in
+            guard
+              let self = self,
+              let data = snapshot?.data(),
+              let name = data["name"] as? String,
+              let artist = data["artist"] as? String,
+              let albumURL = data["albumArtURL"] as? String
+            else { return }
+
+            // **NEW**: pull out the URI you wrote in MainAppView.shareToFirestore(...)
+            let uri = data["uri"] as? String ?? ""
+
+            // now include that uri when building the Item
+            let item = CurrentlyPlayingTrack.Item(
+              name:    name,
+              artists: [ .init(name: artist) ],
+              album:   .init(images: [ .init(url: albumURL) ]),
+              uri:     uri      // ← supply the URI here
+            )
+
+            let track = CurrentlyPlayingTrack(item: item)
+            DispatchQueue.main.async {
+              if let idx = self.friends.firstIndex(where: { $0.id == friendID }) {
+                self.friends[idx].track = track
+              }
             }
+        }
+
+        trackListeners[friendID] = listener
     }
+
 
     private func listenForMyReaction(friendID: String) {
         myReactionListeners[friendID]?.remove()

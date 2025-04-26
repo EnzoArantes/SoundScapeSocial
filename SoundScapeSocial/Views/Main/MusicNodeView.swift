@@ -1,3 +1,9 @@
+//
+//  MusicNodeView.swift
+//  SoundScapeSocial
+//
+//  Created by Enzo Arantes on 4/25/25.
+//
 import SwiftUI
 
 struct MusicNodeView: View {
@@ -39,10 +45,12 @@ struct MusicNodeView: View {
 
 struct MusicNodeView_Previews: PreviewProvider {
   static var previews: some View {
+    // We must supply `uri:` now that Item has that field:
     let dummyItem = CurrentlyPlayingTrack.Item(
       name: "Sample Song",
       artists: [.init(name: "Sample Artist")],
-      album: .init(images: [.init(url: "https://via.placeholder.com/150")])
+      album: .init(images: [.init(url: "https://via.placeholder.com/150")]),
+      uri: "spotify:track:1234567890abcdef"
     )
     let dummyTrack = CurrentlyPlayingTrack(item: dummyItem)
 

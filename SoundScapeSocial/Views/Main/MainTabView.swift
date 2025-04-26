@@ -1,3 +1,10 @@
+//
+//  MainTabView.swift
+//  SoundScapeSocial
+//
+//  Created by Enzo Arantes on 4/25/25.
+//
+
 import SwiftUI
 import FirebaseAuth
 
@@ -14,29 +21,26 @@ struct MainTabView: View {
         ZStack {
             Color.backgroundDark
                 .ignoresSafeArea()
+
             if !signedIn {
                 EmailAuthView()
+
             } else if spotifyAuth.accessToken == nil {
-                VStack {
-                    Text("Welcome, \(welcomeEmail)")
-                        .foregroundColor(.textColor)
-                        .padding(.bottom, 20)
-                    Button("Login with Spotify") {
-                        spotifyAuth.accessToken = nil
-                        spotifyAuth.sessionManager.session = nil
-                        spotifyAuth.initiateLogin()
-                    }
-                    .padding()
-                    .background(Color.primaryPurple)
-                    .foregroundColor(.textColor)
-                    .cornerRadius(8)
+                SpotifyLoginView(email: welcomeEmail) {
+                    // Clear any previous session and start a fresh one
+                    spotifyAuth.accessToken = nil
+                    spotifyAuth.sessionManager.session = nil
+                    spotifyAuth.initiateLogin()
                 }
+
             } else {
                 TabView {
                     MainAppView(currentTrack: $currentTrack)
                         .tabItem { Label("You", systemImage: "person.crop.circle") }
+
                     DiscoverView()
                         .tabItem { Label("Discover", systemImage: "music.note.list") }
+
                     FriendsView()
                         .tabItem { Label("Friends", systemImage: "person.2.fill") }
                 }
@@ -55,7 +59,7 @@ struct MainTabView: View {
     }
 }
 
-struct ContentView_Previews: PreviewProvider {
+struct MainTabView_Previews: PreviewProvider {
     static var previews: some View {
         MainTabView()
             .environmentObject(SpotifyAuthManager())
