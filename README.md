@@ -2,7 +2,8 @@
 
 > A SwiftUI iOS app that lets you share and react to friends’ music in real time.
 
-![SoundScapeSocial Screenshot](docs/screenshot.png)
+![SoundScapeSocial Icon](![SoundScapeSocial Icon](https://github.com/user-attachments/assets/581a556e-6d19-4f89-878d-577f28bf8ae9)
+)
 
 ---
 
