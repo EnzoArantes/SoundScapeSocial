@@ -76,10 +76,7 @@ class FriendsViewModel: ObservableObject {
     }
 
     private func listenForTrackUpdates(friendID: String) {
-        // remove any old listener
         trackListeners[friendID]?.remove()
-
-        // listen to the friend’s public_tracks doc
         let listener = db
           .collection("public_tracks")
           .document(friendID)
@@ -91,18 +88,13 @@ class FriendsViewModel: ObservableObject {
               let artist = data["artist"] as? String,
               let albumURL = data["albumArtURL"] as? String
             else { return }
-
-            // **NEW**: pull out the URI you wrote in MainAppView.shareToFirestore(...)
             let uri = data["uri"] as? String ?? ""
-
-            // now include that uri when building the Item
             let item = CurrentlyPlayingTrack.Item(
               name:    name,
               artists: [ .init(name: artist) ],
               album:   .init(images: [ .init(url: albumURL) ]),
-              uri:     uri      // ← supply the URI here
+              uri:     uri
             )
-
             let track = CurrentlyPlayingTrack(item: item)
             DispatchQueue.main.async {
               if let idx = self.friends.firstIndex(where: { $0.id == friendID }) {
@@ -110,10 +102,8 @@ class FriendsViewModel: ObservableObject {
               }
             }
         }
-
         trackListeners[friendID] = listener
     }
-
 
     private func listenForMyReaction(friendID: String) {
         myReactionListeners[friendID]?.remove()
@@ -177,77 +167,33 @@ struct FriendsView: View {
     @StateObject private var vm = FriendsViewModel()
     @State private var newEmail = ""
 
+    private let columns = [ GridItem(.adaptive(minimum: 140), spacing: 20) ]
+
     var body: some View {
         NavigationView {
             ZStack {
                 Color.backgroundDark
                     .ignoresSafeArea()
+
                 ScrollView {
                     VStack(spacing: 16) {
+                        // Friend addition
                         HStack {
                             TextField("Friend’s email", text: $newEmail)
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
                                 .autocapitalization(.none)
-                            Button("Add") {
-                                vm.addFriend(byEmail: newEmail.trimmingCharacters(in: .whitespaces))
-                                newEmail = ""
+                            Button(action: addFriend) {
+                                Text("Add")
+                                    .font(.headline)
                             }
                             .disabled(newEmail.trimmingCharacters(in: .whitespaces).isEmpty)
                         }
                         .padding([.horizontal, .top])
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), spacing: 16)], spacing: 16) {
+
+                        // Friends grid
+                        LazyVGrid(columns: columns, spacing: 20) {
                             ForEach(vm.friends) { friend in
-                                VStack(spacing: 8) {
-                                    if let track = friend.track {
-                                        MusicNodeView(track: track, size: 100)
-                                        Text(track.artist)
-                                            .font(.caption)
-                                            .foregroundColor(Color.textColor.opacity(0.8))
-                                            .lineLimit(1)
-                                    } else {
-                                        Circle()
-                                            .fill(Color.secondaryPurple)
-                                            .frame(width: 100, height: 100)
-                                            .overlay(
-                                                Image(systemName: "questionmark")
-                                                    .foregroundColor(.textColor)
-                                            )
-                                    }
-                                    if let their = friend.theirReaction {
-                                        HStack(spacing: 4) {
-                                            Text("They reacted:")
-                                                .font(.caption2)
-                                                .foregroundColor(.textColor)
-                                            switch their {
-                                            case .thumbsUp:
-                                                Image(systemName: "hand.thumbsup.fill")
-                                            case .thumbsDown:
-                                                Image(systemName: "hand.thumbsdown.fill")
-                                            case .fire:
-                                                Image(systemName: "flame.fill")
-                                            }
-                                        }
-                                    }
-                                    HStack(spacing: 12) {
-                                        Button { vm.react(to: friend.id, reaction: .thumbsUp) } label: {
-                                            Image(systemName: friend.myReaction == .thumbsUp ? "hand.thumbsup.fill" : "hand.thumbsup")
-                                                .font(.title2)
-                                        }
-                                        Button { vm.react(to: friend.id, reaction: .thumbsDown) } label: {
-                                            Image(systemName: friend.myReaction == .thumbsDown ? "hand.thumbsdown.fill" : "hand.thumbsdown")
-                                                .font(.title2)
-                                        }
-                                        Button { vm.react(to: friend.id, reaction: .fire) } label: {
-                                            Image(systemName: friend.myReaction == .fire ? "flame.fill" : "flame")
-                                                .font(.title2)
-                                        }
-                                    }
-                                }
-                                .padding()
-                                .background(Color.backgroundDark.opacity(0.8))
-                                .cornerRadius(12)
-                                .shadow(radius: 4)
-                                .contentShape(Rectangle())
+                                FriendCardView(friend: friend, onReact: vm.react)
                             }
                         }
                         .padding(.horizontal)
@@ -256,6 +202,100 @@ struct FriendsView: View {
                 }
             }
             .navigationTitle("Friends")
+        }
+    }
+
+    private func addFriend() {
+        let email = newEmail.trimmingCharacters(in: .whitespaces)
+        vm.addFriend(byEmail: email)
+        newEmail = ""
+    }
+}
+
+// MARK: - FriendCardView
+struct FriendCardView: View {
+    let friend: FriendData
+    let onReact: (String, ReactionType) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Album art or placeholder
+            if let track = friend.track {
+                MusicNodeView(track: track, size: 120)
+                    .frame(maxWidth: .infinity)
+            } else {
+                Circle()
+                    .fill(Color.secondaryPurple)
+                    .frame(width: 120, height: 120)
+                    .overlay(
+                        Image(systemName: "questionmark")
+                            .font(.largeTitle)
+                            .foregroundColor(.textColor)
+                    )
+                    .frame(maxWidth: .infinity)
+            }
+
+            // Track info
+            if let track = friend.track {
+                Text(track.name)
+                    .font(.headline)
+                    .foregroundColor(.textColor)
+                    .lineLimit(1)
+                Text(track.artist)
+                    .font(.subheadline)
+                    .foregroundColor(.textColor.opacity(0.8))
+                    .lineLimit(1)
+            }
+
+            // Incoming reaction
+            if let their = friend.theirReaction {
+                HStack(spacing: 6) {
+                    Text("They reacted:")
+                        .font(.subheadline).bold()
+                        .foregroundColor(.textColor)
+                    Image(systemName: iconName(for: their, filled: true))
+                        .font(.title2)
+                        .foregroundColor(.accentColor)
+                }
+            }
+
+            // My reactions
+            myReactions
+        }
+        .padding()
+        .background(Color.backgroundDark.opacity(0.8))
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+    }
+
+    private var myReactions: some View {
+        HStack(spacing: 24) {
+            reactionButton(.thumbsUp)
+            reactionButton(.thumbsDown)
+            reactionButton(.fire)
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    private func reactionButton(_ type: ReactionType) -> some View {
+        let isSelected = friend.myReaction == type
+        return Button {
+            onReact(friend.id, type)
+        } label: {
+            Image(systemName: iconName(for: type, filled: isSelected))
+                .font(.title)
+                .foregroundColor(isSelected ? .accentColor : .textColor)
+        }
+    }
+
+    private func iconName(for reaction: ReactionType, filled: Bool) -> String {
+        switch reaction {
+        case .thumbsUp:
+            return filled ? "hand.thumbsup.fill" : "hand.thumbsup"
+        case .thumbsDown:
+            return filled ? "hand.thumbsdown.fill" : "hand.thumbsdown"
+        case .fire:
+            return filled ? "flame.fill" : "flame"
         }
     }
 }
