@@ -7,8 +7,8 @@ struct SpotifyPreviewTrack: Identifiable, Codable {
     let album: Album
     let preview_url: String?
     
-    let uri: String           // decoded from JSON key "uri"
-    var externalURL: URL? {   // open this in Spotify
+    let uri: String
+    var externalURL: URL? {
         URL(string: "spotify:track:\(uri.split(separator: ":").last!)")
     }
     

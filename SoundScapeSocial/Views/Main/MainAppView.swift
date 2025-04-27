@@ -180,7 +180,7 @@ struct MainAppView: View {
     
     // MARK: – Add to Firestore Favorites
     private func addToFavorites(_ track: CurrentlyPlayingTrack) {
-        // Clean up the track name into a safe doc ID
+
         let safeID = track.name
             .components(separatedBy: CharacterSet.alphanumerics.inverted)
             .joined()
@@ -215,7 +215,7 @@ struct MainAppView: View {
             fetchStatus = "Not logged into Spotify"
             return
         }
-        // Extract the Spotify ID (e.g. "3n3Ppam7vgaVa1iaRUc9Lp" from "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp")
+        
         let components = trackUri.split(separator: ":")
         guard components.count == 3, components[1] == "track" else {
             fetchStatus = "Invalid track URI"
@@ -244,22 +244,20 @@ struct MainAppView: View {
     }
     
     
-    /// Publish my current track so friends can pick it up
     private func shareToFirestore(_ track: CurrentlyPlayingTrack) {
         guard let email = Auth.auth().currentUser?.email else { return }
         let doc: [String:Any] = [
             "name":        track.name,
             "artist":      track.artist,
             "albumArtURL": track.albumArtURL,
-            "uri":         track.uri,         // ← include the Spotify URI here
+            "uri":         track.uri,         
             "email":       email,
             "timestamp":   Timestamp(date: Date())
         ]
-        // Ensure my own profile has my email
+
         db.collection("users").document(uid)
           .setData(["email": email], merge: true)
 
-        // Write into public_tracks so friends can see it
         db.collection("public_tracks").document(uid)
           .setData(doc, merge: true)
     }

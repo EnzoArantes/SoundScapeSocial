@@ -17,7 +17,6 @@ struct SwipeCardView: View {
 
     var body: some View {
         ZStack {
-            // Your album art — use a spinner placeholder if you like:
             AsyncImage(url: URL(string: track.artworkURL)) { phase in
                 switch phase {
                 case .empty:
@@ -36,7 +35,6 @@ struct SwipeCardView: View {
             .cornerRadius(16)
             .shadow(radius: 8)
 
-            // Only the bottom text panel gets a translucent background:
             VStack {
                 Spacer()
                 VStack(spacing: 4) {
@@ -51,7 +49,7 @@ struct SwipeCardView: View {
                 .background(Color.black.opacity(0.4))
                 .cornerRadius(16, corners: [.bottomLeft, .bottomRight])
             }
-            .frame(width: 300, height: 400)  // match the card size so the panel sits at bottom
+            .frame(width: 300, height: 400)
         }
         .offset(x: drag.width, y: drag.height)
         .rotationEffect(.degrees(Double(drag.width / 20)))
@@ -78,7 +76,6 @@ struct SwipeCardView: View {
     }
 }
 
-// Preview stays the same, no dark stripe here:
 struct SwipeCardView_Previews: PreviewProvider {
     static var sampleTrack = SpotifyPreviewTrack(
         id: "1",

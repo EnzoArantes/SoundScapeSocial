@@ -20,9 +20,9 @@ struct MusicNodeView: View {
             .resizable()
             .scaledToFill()
         } else if phase.error != nil {
-          Color.red // error placeholder
+          Color.red 
         } else {
-          Color.gray // loading placeholder
+          Color.gray
         }
       }
       .frame(width: size, height: size)
@@ -45,8 +45,8 @@ struct MusicNodeView: View {
 
 struct MusicNodeView_Previews: PreviewProvider {
   static var previews: some View {
-    // We must supply `uri:` now that Item has that field:
-    let dummyItem = CurrentlyPlayingTrack.Item(
+
+      let dummyItem = CurrentlyPlayingTrack.Item(
       name: "Sample Song",
       artists: [.init(name: "Sample Artist")],
       album: .init(images: [.init(url: "https://via.placeholder.com/150")]),

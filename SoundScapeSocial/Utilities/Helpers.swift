@@ -6,11 +6,11 @@
 //
 import Foundation
 import SwiftUI
-import UIKit   // for UIRectCorner & UIBezierPath
+import UIKit   
 
 extension View {
-  /// Rounds only the specified corners of this view.
-  func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
+
+    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
     clipShape(RoundedCorner(radius: radius, corners: corners))
   }
 }
