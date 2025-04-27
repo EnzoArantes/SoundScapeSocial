@@ -39,7 +39,14 @@ SoundScapeSocial connects your Spotify account and Firebase backend so you can:
 - **Backend:** Firebase (Auth, Firestore)  
 - **Music API:** Spotify iOS SDK (Authentication) + Web API (Playback endpoints)  
 
+## Configure Spotify  
+
+- In your [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/applications), select the app and scroll to **Users Management → Add Users**  
+- **Only the app owner** (your developer account) can add Spotify accounts here—so ask anyone who needs to log in to give you their Spotify username so you can whitelist them
+- Copy your **Client ID** and **Redirect URI** into `SpotifyAuthManager.swift` 
+- Ensure your Info.plist URL scheme (`soundscapesocial://spotify-auth`) matches the Redirect URI
+
 ---
 
-## 📂 Project Structure
+
 
