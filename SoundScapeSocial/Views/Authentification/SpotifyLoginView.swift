@@ -17,11 +17,11 @@ struct SpotifyLoginView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 24) {
-                // If you have a Spotify logo asset, name it "SpotifyLogo" in Assets.xcassets
-                Image("SpotifyLogo")
+                Image(systemName: "waveform.circle.fill")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 80, height: 80)
+                    .foregroundColor(.green)
                     .shadow(radius: 4)
 
                 VStack(spacing: 4) {

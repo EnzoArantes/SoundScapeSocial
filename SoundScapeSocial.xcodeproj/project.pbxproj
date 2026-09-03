@@ -10,7 +10,6 @@
 		57235FE22DB9495A00AB8247 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 57235FE12DB9495A00AB8247 /* FirebaseAuth */; };
 		57235FE42DB9495A00AB8247 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 57235FE32DB9495A00AB8247 /* FirebaseCore */; };
 		57235FE62DB9495A00AB8247 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 57235FE52DB9495A00AB8247 /* FirebaseFirestore */; };
-		57235FE82DB9495A00AB8247 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 57235FE72DB9495A00AB8247 /* FirebaseStorage */; };
 		57235FEB2DB949BB00AB8247 /* SpotifyiOS in Frameworks */ = {isa = PBXBuildFile; productRef = 57235FEA2DB949BB00AB8247 /* SpotifyiOS */; };
 /* End PBXBuildFile section */
 
@@ -45,7 +44,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				57235FE42DB9495A00AB8247 /* FirebaseCore in Frameworks */,
-				57235FE82DB9495A00AB8247 /* FirebaseStorage in Frameworks */,
 				57235FEB2DB949BB00AB8247 /* SpotifyiOS in Frameworks */,
 				57235FE22DB9495A00AB8247 /* FirebaseAuth in Frameworks */,
 				57235FE62DB9495A00AB8247 /* FirebaseFirestore in Frameworks */,
@@ -94,7 +92,6 @@
 				57235FE12DB9495A00AB8247 /* FirebaseAuth */,
 				57235FE32DB9495A00AB8247 /* FirebaseCore */,
 				57235FE52DB9495A00AB8247 /* FirebaseFirestore */,
-				57235FE72DB9495A00AB8247 /* FirebaseStorage */,
 				57235FEA2DB949BB00AB8247 /* SpotifyiOS */,
 			);
 			productName = SoundScapeSocial;
@@ -368,15 +365,15 @@
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 11.12.0;
+				minimumVersion = 12.18.0;
 			};
 		};
 		57235FE92DB949BB00AB8247 /* XCRemoteSwiftPackageReference "ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/spotify/ios-sdk";
 			requirement = {
-				branch = master;
-				kind = branch;
+				kind = exactVersion;
+				version = 3.0.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
@@ -396,11 +393,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 57235FE02DB9495A00AB8247 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFirestore;
-		};
-		57235FE72DB9495A00AB8247 /* FirebaseStorage */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 57235FE02DB9495A00AB8247 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseStorage;
 		};
 		57235FEA2DB949BB00AB8247 /* SpotifyiOS */ = {
 			isa = XCSwiftPackageProductDependency;

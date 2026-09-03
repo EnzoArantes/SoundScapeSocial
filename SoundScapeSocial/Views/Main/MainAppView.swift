@@ -9,7 +9,7 @@ struct MainAppView: View {
     @State private var isProcessing = false
     
     private let db = Firestore.firestore()
-    private var uid: String { Auth.auth().currentUser?.uid ?? "" }
+    private var uid: String? { Auth.auth().currentUser?.uid }
     
     var body: some View {
         ZStack {
@@ -174,17 +174,29 @@ struct MainAppView: View {
                 currentTrack = decoded
                 shareToFirestore(decoded)
             }
-            shareToFirestore(decoded)
         }.resume()
     }
     
     // MARK: – Add to Firestore Favorites
     private func addToFavorites(_ track: CurrentlyPlayingTrack) {
+        guard let uid, !uid.isEmpty else {
+            fetchStatus = "Sign in again to save favorites"
+            return
+        }
 
-        let safeID = track.name
+        // A title made only of punctuation sanitizes to "", which is an illegal
+        // Firestore document ID. Fall back to the Spotify track ID, then give up.
+        let sanitizedName = track.name
             .components(separatedBy: CharacterSet.alphanumerics.inverted)
             .joined()
-        
+        let trackID = track.uri.split(separator: ":").last.map(String.init) ?? ""
+        let safeID = sanitizedName.isEmpty ? trackID : sanitizedName
+
+        guard !safeID.isEmpty else {
+            fetchStatus = "Couldn't build an ID for this track"
+            return
+        }
+
         let favRef = db
             .collection("users")
             .document(uid)
@@ -245,7 +257,8 @@ struct MainAppView: View {
     
     
     private func shareToFirestore(_ track: CurrentlyPlayingTrack) {
-        guard let email = Auth.auth().currentUser?.email else { return }
+        guard let uid, !uid.isEmpty,
+              let email = Auth.auth().currentUser?.email else { return }
         let doc: [String:Any] = [
             "name":        track.name,
             "artist":      track.artist,

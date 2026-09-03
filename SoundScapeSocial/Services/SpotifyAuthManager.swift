@@ -29,7 +29,7 @@ class SpotifyAuthManager: NSObject, ObservableObject, SPTSessionManagerDelegate 
     }
     
     func sessionManager(manager: SPTSessionManager, didInitiate session: SPTSession) {
-        print("✅ Spotify session initiated. Access token: \(session.accessToken)")
+        print("✅ Spotify session initiated.")
         DispatchQueue.main.async {
             self.accessToken = session.accessToken
         }
