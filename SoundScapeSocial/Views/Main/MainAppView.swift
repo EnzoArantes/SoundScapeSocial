@@ -2,27 +2,17 @@ import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
 
+/// The former "You" tab, now pushed from Home's account button.
+///
+/// Polling and the now-playing value moved to `NowPlayingStore` so Home's
+/// own-listening cell and this screen read the same source. Everything this
+/// screen does otherwise is unchanged.
 struct MainAppView: View {
     @EnvironmentObject var spotifyAuth: SpotifyAuthManager
-    @Binding var currentTrack: CurrentlyPlayingTrack?
-    @State private var statusMessage: String?
-    @State private var lastSharedURI: String?
+    @EnvironmentObject private var nowPlaying: NowPlayingStore
 
     private let db = Firestore.firestore()
     private var uid: String? { Auth.auth().currentUser?.uid }
-
-    /// Polling cadence for the now-playing endpoint. Spotify has no push event
-    /// for "track ended", so the next check is scheduled from the time left in
-    /// the current track and clamped so a skip is still noticed quickly.
-    private enum Poll {
-        static let minimum: Duration = .seconds(3)
-        static let maximum: Duration = .seconds(30)
-        static let paused: Duration = .seconds(15)
-        static let nothingPlaying: Duration = .seconds(20)
-        static let afterError: Duration = .seconds(30)
-        /// Land just past the end of the track, not exactly on it.
-        static let endOfTrackBuffer: Duration = .milliseconds(1500)
-    }
 
     var body: some View {
         ZStack {
@@ -59,7 +49,7 @@ struct MainAppView: View {
                 }
 
                 // MARK: – Status Message
-                if let statusMessage {
+                if let statusMessage = nowPlaying.statusMessage {
                     Text(statusMessage)
                         .font(.caption)
                         .foregroundColor(.textSecondary)
@@ -70,13 +60,11 @@ struct MainAppView: View {
                 Spacer()
 
                 // MARK: – Now Playing Card
-                if let track = currentTrack {
+                if let track = nowPlaying.track {
                     VStack(spacing: 16) {
                         AsyncImage(url: URL(string: track.albumArtURL)) { phase in
                             if let img = phase.image {
                                 img.resizable().scaledToFill()
-                            } else if phase.error != nil {
-                                Color.appSurface
                             } else {
                                 Color.appSurface
                             }
@@ -132,119 +120,19 @@ struct MainAppView: View {
                 Spacer()
             }
             .padding(.top)
-            .animation(.easeInOut, value: currentTrack?.uri)
+            .animation(.easeInOut, value: nowPlaying.track?.uri)
         }
-        // Polls only while this view is on screen; SwiftUI cancels the task on
-        // disappear, and restarts it if the Spotify token changes.
+        // Home stops polling once it is pushed off screen, so keep it running
+        // here for as long as this screen is visible.
         .task(id: spotifyAuth.accessToken) {
-            await pollNowPlaying()
+            await nowPlaying.poll(token: spotifyAuth.accessToken)
         }
-    }
-
-    // MARK: – Polling
-
-    @MainActor
-    private func pollNowPlaying() async {
-        while !Task.isCancelled {
-            let wait = await refreshNowPlaying()
-            if Task.isCancelled { return }
-            do {
-                try await Task.sleep(for: wait)
-            } catch {
-                return // cancelled while sleeping
-            }
-        }
-    }
-
-    /// Performs one check and returns how long to wait before the next one.
-    @MainActor
-    private func refreshNowPlaying() async -> Duration {
-        guard let token = spotifyAuth.accessToken, !token.isEmpty else {
-            statusMessage = "Connect Spotify to see what's playing."
-            currentTrack = nil
-            return Poll.nothingPlaying
-        }
-
-        guard let url = URL(string: "https://api.spotify.com/v1/me/player/currently-playing") else {
-            return Poll.afterError
-        }
-
-        var request = URLRequest(url: url)
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.cachePolicy = .reloadIgnoringLocalCacheData
-
-        do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse else {
-                statusMessage = "Unexpected response from Spotify."
-                return Poll.afterError
-            }
-
-            switch http.statusCode {
-            case 200:
-                guard let decoded = try? JSONDecoder().decode(
-                    CurrentlyPlayingTrack.self, from: data
-                ) else {
-                    statusMessage = "Could not read the current track."
-                    return Poll.afterError
-                }
-                apply(decoded)
-                return nextDelay(for: decoded)
-
-            case 204:
-                statusMessage = nil
-                currentTrack = nil
-                lastSharedURI = nil
-                return Poll.nothingPlaying
-
-            case 401:
-                // Renewing the token needs a secret-holding backend the app does
-                // not have, so the only recovery is reconnecting Spotify.
-                statusMessage = "Your Spotify session expired. Reconnect Spotify."
-                return Poll.afterError
-
-            case 429:
-                let retryAfter = http.value(forHTTPHeaderField: "Retry-After")
-                    .flatMap(Int.init) ?? 30
-                statusMessage = "Spotify is rate limiting. Retrying shortly."
-                return .seconds(max(retryAfter, 5))
-
-            default:
-                statusMessage = "Spotify returned HTTP \(http.statusCode)."
-                return Poll.afterError
-            }
-        } catch {
-            if Task.isCancelled { return Poll.minimum }
-            statusMessage = "Network error: \(error.localizedDescription)"
-            return Poll.afterError
-        }
-    }
-
-    @MainActor
-    private func apply(_ track: CurrentlyPlayingTrack) {
-        statusMessage = nil
-        currentTrack = track
-
-        // Share once per track, not once per poll.
-        if track.uri != lastSharedURI {
-            lastSharedURI = track.uri
-            shareToFirestore(track)
-        }
-    }
-
-    /// Wake up just after the current track ends, within sensible bounds.
-    private func nextDelay(for track: CurrentlyPlayingTrack) -> Duration {
-        guard track.isPlaying != false else { return Poll.paused }
-        guard let remainingMs = track.remainingMs else { return Poll.maximum }
-
-        let target = Duration.milliseconds(remainingMs) + Poll.endOfTrackBuffer
-        return min(max(target, Poll.minimum), Poll.maximum)
     }
 
     // MARK: – Add to Firestore Favorites
     private func addToFavorites(_ track: CurrentlyPlayingTrack) {
         guard let uid, !uid.isEmpty else {
-            statusMessage = "Sign in again to save favorites"
+            nowPlaying.statusMessage = "Sign in again to save favorites"
             return
         }
 
@@ -257,7 +145,7 @@ struct MainAppView: View {
         let safeID = sanitizedName.isEmpty ? trackID : sanitizedName
 
         guard !safeID.isEmpty else {
-            statusMessage = "Couldn't build an ID for this track"
+            nowPlaying.statusMessage = "Couldn't build an ID for this track"
             return
         }
 
@@ -277,9 +165,9 @@ struct MainAppView: View {
             DispatchQueue.main.async {
                 if let err = error {
                     print("Favorite write error:", err)
-                    statusMessage = "Failed to add favorite"
+                    nowPlaying.statusMessage = "Failed to add favorite"
                 } else {
-                    statusMessage = "★ Added to favorites!"
+                    nowPlaying.statusMessage = "★ Added to favorites!"
                 }
             }
         }
@@ -287,13 +175,13 @@ struct MainAppView: View {
 
     private func saveToSpotifyLibrary(trackUri: String) {
         guard let token = spotifyAuth.accessToken else {
-            statusMessage = "Not logged into Spotify"
+            nowPlaying.statusMessage = "Not logged into Spotify"
             return
         }
 
         let components = trackUri.split(separator: ":")
         guard components.count == 3, components[1] == "track" else {
-            statusMessage = "Invalid track URI"
+            nowPlaying.statusMessage = "Invalid track URI"
             return
         }
         let trackID = String(components[2])
@@ -307,40 +195,22 @@ struct MainAppView: View {
         URLSession.shared.dataTask(with: req) { _, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    statusMessage = "Spotify save error: \(error.localizedDescription)"
+                    nowPlaying.statusMessage = "Spotify save error: \(error.localizedDescription)"
                 } else if let http = response as? HTTPURLResponse, http.statusCode == 200 {
-                    statusMessage = "★ Saved to Spotify!"
+                    nowPlaying.statusMessage = "★ Saved to Spotify!"
                 } else {
                     let code = (response as? HTTPURLResponse)?.statusCode ?? -1
-                    statusMessage = "Spotify HTTP \(code)"
+                    nowPlaying.statusMessage = "Spotify HTTP \(code)"
                 }
             }
         }.resume()
-    }
-
-    private func shareToFirestore(_ track: CurrentlyPlayingTrack) {
-        guard let uid, !uid.isEmpty,
-              let email = Auth.auth().currentUser?.email else { return }
-        let doc: [String: Any] = [
-            "name":        track.name,
-            "artist":      track.artist,
-            "albumArtURL": track.albumArtURL,
-            "uri":         track.uri,
-            "email":       email,
-            "timestamp":   Timestamp(date: Date())
-        ]
-
-        db.collection("users").document(uid)
-          .setData(["email": email], merge: true)
-
-        db.collection("public_tracks").document(uid)
-          .setData(doc, merge: true)
     }
 }
 
 struct MainAppView_Previews: PreviewProvider {
     static var previews: some View {
-        MainAppView(currentTrack: .constant(nil))
+        MainAppView()
             .environmentObject(SpotifyAuthManager())
+            .environmentObject(NowPlayingStore())
     }
 }
