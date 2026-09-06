@@ -7,14 +7,14 @@ struct ForYouView: View {
 
     var body: some View {
         ZStack {
-            Color.backgroundDark
+            Color.appBackground
                 .ignoresSafeArea()
 
             switch vm.state {
             case .idle, .loading:
                 ProgressView("Finding songs for you…")
-                    .tint(.primaryPurple)
-                    .foregroundColor(.textColor)
+                    .tint(.brandAccent)
+                    .foregroundColor(.textPrimary)
 
             case .message(let text):
                 messageState(text)
@@ -34,11 +34,11 @@ struct ForYouView: View {
         VStack(spacing: 16) {
             Image(systemName: "sparkles")
                 .font(.largeTitle)
-                .foregroundColor(.primaryPurple)
+                .foregroundColor(.brandAccent)
 
             Text(text)
                 .font(.subheadline)
-                .foregroundColor(.textColor.opacity(0.8))
+                .foregroundColor(.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
 
@@ -71,10 +71,10 @@ struct ForYouView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("For You")
                 .font(.largeTitle).bold()
-                .foregroundColor(.textColor)
+                .foregroundColor(.textPrimary)
             Text("Picked from your top artists and tracks.")
                 .font(.subheadline)
-                .foregroundColor(.textColor.opacity(0.7))
+                .foregroundColor(.textSecondary)
         }
         .padding(.top)
         .padding(.bottom, 4)
@@ -88,8 +88,8 @@ struct ForYouView: View {
                 .font(.headline)
                 .padding(.vertical, 10)
                 .padding(.horizontal, 24)
-                .background(Color.primaryPurple)
-                .foregroundColor(.textColor)
+                .background(Color.brandFill)
+                .foregroundColor(.onBrand)
                 .cornerRadius(12)
         }
         .disabled(vm.isLoading)
@@ -107,24 +107,24 @@ struct RecommendationRow: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(recommendation.track)
                     .font(.headline)
-                    .foregroundColor(.textColor)
+                    .foregroundColor(.textPrimary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
 
                 Text(recommendation.artist)
                     .font(.subheadline)
-                    .foregroundColor(.primaryPurple)
+                    .foregroundColor(.brandAccent)
                     .lineLimit(1)
 
                 Text(recommendation.reason)
                     .font(.caption)
-                    .foregroundColor(.textColor.opacity(0.7))
+                    .foregroundColor(.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .multilineTextAlignment(.leading)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
-            .background(Color.secondaryPurple.opacity(0.18))
+            .background(Color.appSurface)
             .cornerRadius(16)
         }
         .buttonStyle(.plain)

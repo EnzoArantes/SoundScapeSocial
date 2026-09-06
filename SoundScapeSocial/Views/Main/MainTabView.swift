@@ -20,7 +20,7 @@ struct MainTabView: View {
 
     var body: some View {
         ZStack {
-            Color.backgroundDark
+            Color.appBackground
                 .ignoresSafeArea()
 
             if !signedIn {

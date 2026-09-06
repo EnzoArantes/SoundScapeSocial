@@ -179,7 +179,7 @@ struct FriendsView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color.backgroundDark
+                Color.appBackground
                     .ignoresSafeArea()
 
                 ScrollView {
@@ -232,12 +232,12 @@ struct FriendCardView: View {
                     .frame(maxWidth: .infinity)
             } else {
                 Circle()
-                    .fill(Color.secondaryPurple)
+                    .fill(Color.brandFill)
                     .frame(width: 120, height: 120)
                     .overlay(
                         Image(systemName: "questionmark")
                             .font(.largeTitle)
-                            .foregroundColor(.textColor)
+                            .foregroundColor(.onBrand)
                     )
                     .frame(maxWidth: .infinity)
             }
@@ -246,11 +246,11 @@ struct FriendCardView: View {
             if let track = friend.track {
                 Text(track.name)
                     .font(.headline)
-                    .foregroundColor(.textColor)
+                    .foregroundColor(.textPrimary)
                     .lineLimit(1)
                 Text(track.artist)
                     .font(.subheadline)
-                    .foregroundColor(.textColor.opacity(0.8))
+                    .foregroundColor(.textSecondary)
                     .lineLimit(1)
             }
 
@@ -259,10 +259,10 @@ struct FriendCardView: View {
                 HStack(spacing: 6) {
                     Text("They reacted:")
                         .font(.subheadline).bold()
-                        .foregroundColor(.textColor)
+                        .foregroundColor(.textPrimary)
                     Image(systemName: iconName(for: their, filled: true))
                         .font(.title2)
-                        .foregroundColor(.accentColor)
+                        .foregroundColor(.brandAccent)
                 }
             }
 
@@ -270,7 +270,7 @@ struct FriendCardView: View {
             myReactions
         }
         .padding()
-        .background(Color.backgroundDark.opacity(0.8))
+        .background(Color.appSurface)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
     }
@@ -291,7 +291,7 @@ struct FriendCardView: View {
         } label: {
             Image(systemName: iconName(for: type, filled: isSelected))
                 .font(.title)
-                .foregroundColor(isSelected ? .accentColor : .textColor)
+                .foregroundColor(isSelected ? .brandAccent : .textSecondary)
         }
     }
 

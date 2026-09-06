@@ -22,7 +22,7 @@ struct MusicNodeView: View {
         } else if phase.error != nil {
           Color.red 
         } else {
-          Color.gray
+          Color.appSurface
         }
       }
       .frame(width: size, height: size)
@@ -38,7 +38,7 @@ struct MusicNodeView: View {
       Text(track.name)
         .font(.caption)
         .lineLimit(1)
-        .foregroundColor(.textColor)
+        .foregroundColor(.textPrimary)
     }
   }
 }

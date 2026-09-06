@@ -15,29 +15,29 @@ struct EmailAuthView: View {
 
   var body: some View {
     ZStack {
-      Color.backgroundDark
+      Color.appBackground
         .ignoresSafeArea()
 
       VStack(spacing: 16) {
         Text("Welcome to SoundScape Social")
           .font(.title2)
           .bold()
-          .foregroundColor(.primaryPurple)
+          .foregroundColor(.brandAccent)
 
         TextField("Email", text: $email)
           .textContentType(.emailAddress)
           .keyboardType(.emailAddress)
           .autocapitalization(.none)
           .padding()
-          .background(Color.secondaryPurple)
-          .foregroundColor(.textColor)
+          .background(Color.appSurface)
+          .foregroundColor(.textPrimary)
           .cornerRadius(8)
 
         SecureField("Password", text: $password)
           .textContentType(.newPassword)
           .padding()
-          .background(Color.secondaryPurple)
-          .foregroundColor(.textColor)
+          .background(Color.appSurface)
+          .foregroundColor(.textPrimary)
           .cornerRadius(8)
 
         if let err = errorMessage {
@@ -55,8 +55,8 @@ struct EmailAuthView: View {
           }
         }
         .padding()
-        .background(Color.primaryPurple)
-        .foregroundColor(.textColor)
+        .background(Color.brandFill)
+        .foregroundColor(.onBrand)
         .cornerRadius(8)
         .disabled(email.isEmpty || password.count < 6)
 
@@ -65,7 +65,7 @@ struct EmailAuthView: View {
           errorMessage = nil
         }
         .font(.caption)
-        .foregroundColor(.secondaryPurple)
+        .foregroundColor(.brandAccent)
         .padding(.top, 4)
       }
       .padding()

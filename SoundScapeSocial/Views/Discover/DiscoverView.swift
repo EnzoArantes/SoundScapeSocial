@@ -14,11 +14,11 @@ struct DiscoverView: View {
 
   var body: some View {
     ZStack {
-      Color.backgroundDark.ignoresSafeArea()
+      Color.appBackground.ignoresSafeArea()
 
       if vm.tracks.isEmpty {
         ProgressView("Loading…")
-          .foregroundColor(.textColor)
+          .foregroundColor(.textPrimary)
 
       } else if currentIndex < vm.tracks.count {
         SwipeCardView(track: vm.tracks[currentIndex]) { dir in
@@ -30,7 +30,7 @@ struct DiscoverView: View {
 
       } else {
         Text("No more tracks")
-          .foregroundColor(.textColor)
+          .foregroundColor(.textPrimary)
       }
     }
     .onAppear {

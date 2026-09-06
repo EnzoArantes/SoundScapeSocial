@@ -5,17 +5,30 @@ import FirebaseFirestore
 struct MainAppView: View {
     @EnvironmentObject var spotifyAuth: SpotifyAuthManager
     @Binding var currentTrack: CurrentlyPlayingTrack?
-    @State private var fetchStatus: String?
-    @State private var isProcessing = false
-    
+    @State private var statusMessage: String?
+    @State private var lastSharedURI: String?
+
     private let db = Firestore.firestore()
     private var uid: String? { Auth.auth().currentUser?.uid }
-    
+
+    /// Polling cadence for the now-playing endpoint. Spotify has no push event
+    /// for "track ended", so the next check is scheduled from the time left in
+    /// the current track and clamped so a skip is still noticed quickly.
+    private enum Poll {
+        static let minimum: Duration = .seconds(3)
+        static let maximum: Duration = .seconds(30)
+        static let paused: Duration = .seconds(15)
+        static let nothingPlaying: Duration = .seconds(20)
+        static let afterError: Duration = .seconds(30)
+        /// Land just past the end of the track, not exactly on it.
+        static let endOfTrackBuffer: Duration = .milliseconds(1500)
+    }
+
     var body: some View {
         ZStack {
-            Color.backgroundDark
+            Color.appBackground
                 .ignoresSafeArea()
-            
+
             VStack(spacing: 24) {
                 // MARK: – Sign-Out Controls
                 HStack(spacing: 16) {
@@ -26,10 +39,10 @@ struct MainAppView: View {
                     .font(.subheadline)
                     .padding(.vertical, 6)
                     .padding(.horizontal, 12)
-                    .background(Color.secondaryPurple)
-                    .foregroundColor(.textColor)
+                    .background(Color.appSurface)
+                    .foregroundColor(.textPrimary)
                     .cornerRadius(8)
-                    
+
                     Button("Sign Out") {
                         do {
                             try Auth.auth().signOut()
@@ -40,36 +53,22 @@ struct MainAppView: View {
                     .font(.subheadline)
                     .padding(.vertical, 6)
                     .padding(.horizontal, 12)
-                    .background(Color.primaryPurple)
-                    .foregroundColor(.textColor)
+                    .background(Color.brandFill)
+                    .foregroundColor(.onBrand)
                     .cornerRadius(8)
                 }
-                
-                // MARK: – Fetch Now Playing
-                Button(action: fetchNowPlaying) {
-                    HStack {
-                        Image(systemName: "arrow.clockwise.circle.fill")
-                        Text("Fetch Now Playing")
-                            .font(.headline)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.secondaryPurple)
-                    .foregroundColor(.textColor)
-                    .cornerRadius(12)
-                }
-                .disabled(isProcessing)
-                
+
                 // MARK: – Status Message
-                if let status = fetchStatus {
-                    Text(status)
+                if let statusMessage {
+                    Text(statusMessage)
                         .font(.caption)
-                        .foregroundColor(.yellow)
+                        .foregroundColor(.textSecondary)
+                        .multilineTextAlignment(.center)
                         .padding(.horizontal)
                 }
-                
+
                 Spacer()
-                
+
                 // MARK: – Now Playing Card
                 if let track = currentTrack {
                     VStack(spacing: 16) {
@@ -77,25 +76,25 @@ struct MainAppView: View {
                             if let img = phase.image {
                                 img.resizable().scaledToFill()
                             } else if phase.error != nil {
-                                Color.red
+                                Color.appSurface
                             } else {
-                                Color.gray
+                                Color.appSurface
                             }
                         }
                         .frame(width: 240, height: 240)
                         .clipShape(RoundedRectangle(cornerRadius: 20))
                         .shadow(radius: 8)
-                        
+
                         Text(track.name)
                             .font(.title2).bold()
-                            .foregroundColor(.textColor)
+                            .foregroundColor(.textPrimary)
                             .lineLimit(1)
-                        
+
                         Text(track.artist)
                             .font(.subheadline)
-                            .foregroundColor(.textColor.opacity(0.8))
+                            .foregroundColor(.textSecondary)
                             .lineLimit(1)
-                        
+
                         Button(action: {
                             addToFavorites(track)
                             saveToSpotifyLibrary(trackUri: track.uri)
@@ -107,80 +106,145 @@ struct MainAppView: View {
                             }
                             .padding(.vertical, 10)
                             .padding(.horizontal, 24)
-                            .background(Color.primaryPurple)
-                            .foregroundColor(.textColor)
+                            .background(Color.brandFill)
+                            .foregroundColor(.onBrand)
                             .cornerRadius(12)
                         }
                     }
                     .padding()
-                    .background(Color.secondaryPurple.opacity(0.15))
+                    .background(Color.appSurface)
                     .cornerRadius(20)
                     .padding(.horizontal)
+                    .transition(.opacity)
+                } else {
+                    VStack(spacing: 12) {
+                        Image(systemName: "music.note")
+                            .font(.system(size: 44))
+                            .foregroundColor(.brandAccent)
+                        Text("Play something on Spotify and it will show up here.")
+                            .font(.subheadline)
+                            .foregroundColor(.textSecondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                    }
                 }
-                
+
                 Spacer()
             }
             .padding(.top)
+            .animation(.easeInOut, value: currentTrack?.uri)
+        }
+        // Polls only while this view is on screen; SwiftUI cancels the task on
+        // disappear, and restarts it if the Spotify token changes.
+        .task(id: spotifyAuth.accessToken) {
+            await pollNowPlaying()
         }
     }
-    
-    // MARK: – Spotify Fetch
-    private func fetchNowPlaying() {
-        guard let token = spotifyAuth.accessToken,
-              let url = URL(string: "https://api.spotify.com/v1/me/player/currently-playing")
-        else {
-            fetchStatus = "Not logged into Spotify"
-            return
-        }
-        
-        isProcessing = true
-        fetchStatus = nil
-        
-        var req = URLRequest(url: url)
-        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        
-        URLSession.shared.dataTask(with: req) { data, response, error in
-            defer { DispatchQueue.main.async { isProcessing = false } }
-            
-            if let error = error {
-                DispatchQueue.main.async {
-                    fetchStatus = "Error: \(error.localizedDescription)"
-                }
-                return
+
+    // MARK: – Polling
+
+    @MainActor
+    private func pollNowPlaying() async {
+        while !Task.isCancelled {
+            let wait = await refreshNowPlaying()
+            if Task.isCancelled { return }
+            do {
+                try await Task.sleep(for: wait)
+            } catch {
+                return // cancelled while sleeping
             }
+        }
+    }
+
+    /// Performs one check and returns how long to wait before the next one.
+    @MainActor
+    private func refreshNowPlaying() async -> Duration {
+        guard let token = spotifyAuth.accessToken, !token.isEmpty else {
+            statusMessage = "Connect Spotify to see what's playing."
+            currentTrack = nil
+            return Poll.nothingPlaying
+        }
+
+        guard let url = URL(string: "https://api.spotify.com/v1/me/player/currently-playing") else {
+            return Poll.afterError
+        }
+
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse else {
-                DispatchQueue.main.async {
-                    fetchStatus = "Invalid response"
+                statusMessage = "Unexpected response from Spotify."
+                return Poll.afterError
+            }
+
+            switch http.statusCode {
+            case 200:
+                guard let decoded = try? JSONDecoder().decode(
+                    CurrentlyPlayingTrack.self, from: data
+                ) else {
+                    statusMessage = "Could not read the current track."
+                    return Poll.afterError
                 }
-                return
+                apply(decoded)
+                return nextDelay(for: decoded)
+
+            case 204:
+                statusMessage = nil
+                currentTrack = nil
+                lastSharedURI = nil
+                return Poll.nothingPlaying
+
+            case 401:
+                // Renewing the token needs a secret-holding backend the app does
+                // not have, so the only recovery is reconnecting Spotify.
+                statusMessage = "Your Spotify session expired. Reconnect Spotify."
+                return Poll.afterError
+
+            case 429:
+                let retryAfter = http.value(forHTTPHeaderField: "Retry-After")
+                    .flatMap(Int.init) ?? 30
+                statusMessage = "Spotify is rate limiting. Retrying shortly."
+                return .seconds(max(retryAfter, 5))
+
+            default:
+                statusMessage = "Spotify returned HTTP \(http.statusCode)."
+                return Poll.afterError
             }
-            if http.statusCode != 200 {
-                DispatchQueue.main.async {
-                    fetchStatus = http.statusCode == 204
-                    ? "No track playing"
-                    : "HTTP \(http.statusCode)"
-                }
-                return
-            }
-            guard let data = data,
-                  let decoded = try? JSONDecoder().decode(CurrentlyPlayingTrack.self, from: data)
-            else {
-                DispatchQueue.main.async {
-                    fetchStatus = "Decode failed"
-                }
-                return
-            }
-            DispatchQueue.main.async {
-                currentTrack = decoded
-                shareToFirestore(decoded)
-            }
-        }.resume()
+        } catch {
+            if Task.isCancelled { return Poll.minimum }
+            statusMessage = "Network error: \(error.localizedDescription)"
+            return Poll.afterError
+        }
     }
-    
+
+    @MainActor
+    private func apply(_ track: CurrentlyPlayingTrack) {
+        statusMessage = nil
+        currentTrack = track
+
+        // Share once per track, not once per poll.
+        if track.uri != lastSharedURI {
+            lastSharedURI = track.uri
+            shareToFirestore(track)
+        }
+    }
+
+    /// Wake up just after the current track ends, within sensible bounds.
+    private func nextDelay(for track: CurrentlyPlayingTrack) -> Duration {
+        guard track.isPlaying != false else { return Poll.paused }
+        guard let remainingMs = track.remainingMs else { return Poll.maximum }
+
+        let target = Duration.milliseconds(remainingMs) + Poll.endOfTrackBuffer
+        return min(max(target, Poll.minimum), Poll.maximum)
+    }
+
     // MARK: – Add to Firestore Favorites
     private func addToFavorites(_ track: CurrentlyPlayingTrack) {
         guard let uid, !uid.isEmpty else {
-            fetchStatus = "Sign in again to save favorites"
+            statusMessage = "Sign in again to save favorites"
             return
         }
 
@@ -193,7 +257,7 @@ struct MainAppView: View {
         let safeID = sanitizedName.isEmpty ? trackID : sanitizedName
 
         guard !safeID.isEmpty else {
-            fetchStatus = "Couldn't build an ID for this track"
+            statusMessage = "Couldn't build an ID for this track"
             return
         }
 
@@ -202,68 +266,66 @@ struct MainAppView: View {
             .document(uid)
             .collection("favorites")
             .document(safeID)
-        
-        let data: [String:Any] = [
+
+        let data: [String: Any] = [
             "name": track.name,
             "artist": track.artist,
             "timestamp": Timestamp(date: Date())
         ]
-        
+
         favRef.setData(data, merge: true) { error in
             DispatchQueue.main.async {
                 if let err = error {
                     print("Favorite write error:", err)
-                    fetchStatus = "Failed to add favorite"
+                    statusMessage = "Failed to add favorite"
                 } else {
-                    print("✅ Added to favorites!")
-                    fetchStatus = "★ Added to favorites!"
+                    statusMessage = "★ Added to favorites!"
                 }
             }
         }
     }
-    
+
     private func saveToSpotifyLibrary(trackUri: String) {
         guard let token = spotifyAuth.accessToken else {
-            fetchStatus = "Not logged into Spotify"
+            statusMessage = "Not logged into Spotify"
             return
         }
-        
+
         let components = trackUri.split(separator: ":")
         guard components.count == 3, components[1] == "track" else {
-            fetchStatus = "Invalid track URI"
+            statusMessage = "Invalid track URI"
             return
         }
         let trackID = String(components[2])
         let urlString = "https://api.spotify.com/v1/me/tracks?ids=\(trackID)"
         guard let url = URL(string: urlString) else { return }
-        
+
         var req = URLRequest(url: url)
         req.httpMethod = "PUT"
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        
+
         URLSession.shared.dataTask(with: req) { _, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    fetchStatus = "Spotify save error: \(error.localizedDescription)"
+                    statusMessage = "Spotify save error: \(error.localizedDescription)"
                 } else if let http = response as? HTTPURLResponse, http.statusCode == 200 {
-                    fetchStatus = "★ Saved to Spotify!"
+                    statusMessage = "★ Saved to Spotify!"
                 } else {
                     let code = (response as? HTTPURLResponse)?.statusCode ?? -1
-                    fetchStatus = "Spotify HTTP \(code)"
+                    statusMessage = "Spotify HTTP \(code)"
                 }
             }
         }.resume()
     }
-    
-    
+
     private func shareToFirestore(_ track: CurrentlyPlayingTrack) {
         guard let uid, !uid.isEmpty,
               let email = Auth.auth().currentUser?.email else { return }
-        let doc: [String:Any] = [
+        let doc: [String: Any] = [
             "name":        track.name,
             "artist":      track.artist,
             "albumArtURL": track.albumArtURL,
-            "uri":         track.uri,         
+            "uri":         track.uri,
             "email":       email,
             "timestamp":   Timestamp(date: Date())
         ]
@@ -274,7 +336,6 @@ struct MainAppView: View {
         db.collection("public_tracks").document(uid)
           .setData(doc, merge: true)
     }
-    
 }
 
 struct MainAppView_Previews: PreviewProvider {
