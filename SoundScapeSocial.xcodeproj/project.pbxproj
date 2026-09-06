@@ -11,6 +11,7 @@
 		57235FE42DB9495A00AB8247 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 57235FE32DB9495A00AB8247 /* FirebaseCore */; };
 		57235FE62DB9495A00AB8247 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 57235FE52DB9495A00AB8247 /* FirebaseFirestore */; };
 		57235FEB2DB949BB00AB8247 /* SpotifyiOS in Frameworks */ = {isa = PBXBuildFile; productRef = 57235FEA2DB949BB00AB8247 /* SpotifyiOS */; };
+		57235FF12DB9495A00AB8247 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = 57235FF02DB9495A00AB8247 /* FirebaseFunctions */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -47,6 +48,7 @@
 				57235FEB2DB949BB00AB8247 /* SpotifyiOS in Frameworks */,
 				57235FE22DB9495A00AB8247 /* FirebaseAuth in Frameworks */,
 				57235FE62DB9495A00AB8247 /* FirebaseFirestore in Frameworks */,
+				57235FF12DB9495A00AB8247 /* FirebaseFunctions in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -92,6 +94,7 @@
 				57235FE12DB9495A00AB8247 /* FirebaseAuth */,
 				57235FE32DB9495A00AB8247 /* FirebaseCore */,
 				57235FE52DB9495A00AB8247 /* FirebaseFirestore */,
+				57235FF02DB9495A00AB8247 /* FirebaseFunctions */,
 				57235FEA2DB949BB00AB8247 /* SpotifyiOS */,
 			);
 			productName = SoundScapeSocial;
@@ -398,6 +401,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 57235FE92DB949BB00AB8247 /* XCRemoteSwiftPackageReference "ios-sdk" */;
 			productName = SpotifyiOS;
+		};
+		57235FF02DB9495A00AB8247 /* FirebaseFunctions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 57235FE02DB9495A00AB8247 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFunctions;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

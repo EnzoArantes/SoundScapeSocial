@@ -19,7 +19,8 @@ class SpotifyAuthManager: NSObject, ObservableObject, SPTSessionManagerDelegate 
         let scopes: SPTScope = [
             .userReadCurrentlyPlaying,
             .userReadPlaybackState,
-            .userLibraryModify   // new
+            .userLibraryModify,
+            .userTopRead        // needed for /v1/me/top/{artists,tracks}
         ]
         sessionManager.initiateSession(
             with: scopes,

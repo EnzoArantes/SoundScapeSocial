@@ -42,6 +42,9 @@ struct MainTabView: View {
                     DiscoverView()
                         .tabItem { Label("Discover", systemImage: "music.note.list") }
 
+                    ForYouView()
+                        .tabItem { Label("For You", systemImage: "sparkles") }
+
                     FriendsView()
                         .tabItem { Label("Friends", systemImage: "person.2.fill") }
                 }
