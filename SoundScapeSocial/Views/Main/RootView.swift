@@ -1,16 +1,17 @@
 //
-//  MainTabView.swift
+//  RootView.swift
 //  SoundScapeSocial
 //
-//  Created by Enzo Arantes on 4/25/25.
+//  Replaces MainTabView. Same auth gating as before; the four-way TabView it
+//  used to host is now HomeView's grid.
 //
 
 import SwiftUI
 import FirebaseAuth
 
-struct MainTabView: View {
+struct RootView: View {
     @EnvironmentObject var spotifyAuth: SpotifyAuthManager
-    @State private var currentTrack: CurrentlyPlayingTrack?
+    @StateObject private var nowPlaying = NowPlayingStore()
     @State private var signedIn = Auth.auth().currentUser != nil
     @State private var authListener: AuthStateDidChangeListenerHandle?
 
@@ -35,21 +36,10 @@ struct MainTabView: View {
                 }
 
             } else {
-                TabView {
-                    MainAppView(currentTrack: $currentTrack)
-                        .tabItem { Label("You", systemImage: "person.crop.circle") }
-
-                    DiscoverView()
-                        .tabItem { Label("Discover", systemImage: "music.note.list") }
-
-                    ForYouView()
-                        .tabItem { Label("For You", systemImage: "sparkles") }
-
-                    FriendsView()
-                        .tabItem { Label("Friends", systemImage: "person.2.fill") }
-                }
+                HomeView()
             }
         }
+        .environmentObject(nowPlaying)
         .animation(.easeInOut, value: signedIn)
         .animation(.easeInOut, value: spotifyAuth.accessToken)
         .onAppear {
@@ -57,7 +47,7 @@ struct MainTabView: View {
             authListener = Auth.auth().addStateDidChangeListener { _, user in
                 signedIn = (user != nil)
                 if user == nil {
-                    currentTrack = nil
+                    Task { @MainActor in nowPlaying.clear() }
                 }
             }
         }
@@ -69,9 +59,9 @@ struct MainTabView: View {
     }
 }
 
-struct MainTabView_Previews: PreviewProvider {
+struct RootView_Previews: PreviewProvider {
     static var previews: some View {
-        MainTabView()
+        RootView()
             .environmentObject(SpotifyAuthManager())
     }
 }
