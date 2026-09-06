@@ -25,9 +25,9 @@ struct SwipeCardView: View {
                 case .success(let img):
                     img.resizable().scaledToFill()
                 case .failure:
-                    Color.gray
+                    Color.appSurface
                 @unknown default:
-                    Color.gray
+                    Color.appSurface
                 }
             }
             .frame(width: 300, height: 400)
@@ -89,6 +89,6 @@ struct SwipeCardView_Previews: PreviewProvider {
     static var previews: some View {
         SwipeCardView(track: sampleTrack) { _ in }
             .padding()
-            .background(Color.backgroundDark)
+            .background(Color.appBackground)
     }
 }

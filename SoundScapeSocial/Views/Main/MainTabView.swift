@@ -12,6 +12,7 @@ struct MainTabView: View {
     @EnvironmentObject var spotifyAuth: SpotifyAuthManager
     @State private var currentTrack: CurrentlyPlayingTrack?
     @State private var signedIn = Auth.auth().currentUser != nil
+    @State private var authListener: AuthStateDidChangeListenerHandle?
 
     private var welcomeEmail: String {
         Auth.auth().currentUser?.email ?? "User"
@@ -19,7 +20,7 @@ struct MainTabView: View {
 
     var body: some View {
         ZStack {
-            Color.backgroundDark
+            Color.appBackground
                 .ignoresSafeArea()
 
             if !signedIn {
@@ -41,6 +42,9 @@ struct MainTabView: View {
                     DiscoverView()
                         .tabItem { Label("Discover", systemImage: "music.note.list") }
 
+                    ForYouView()
+                        .tabItem { Label("For You", systemImage: "sparkles") }
+
                     FriendsView()
                         .tabItem { Label("Friends", systemImage: "person.2.fill") }
                 }
@@ -49,12 +53,18 @@ struct MainTabView: View {
         .animation(.easeInOut, value: signedIn)
         .animation(.easeInOut, value: spotifyAuth.accessToken)
         .onAppear {
-            Auth.auth().addStateDidChangeListener { _, user in
+            guard authListener == nil else { return }
+            authListener = Auth.auth().addStateDidChangeListener { _, user in
                 signedIn = (user != nil)
                 if user == nil {
                     currentTrack = nil
                 }
             }
+        }
+        .onDisappear {
+            guard let handle = authListener else { return }
+            Auth.auth().removeStateDidChangeListener(handle)
+            authListener = nil
         }
     }
 }

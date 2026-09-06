@@ -13,30 +13,33 @@ struct SpotifyLoginView: View {
 
     var body: some View {
         ZStack {
-            Color.backgroundDark
+            Color.appBackground
                 .ignoresSafeArea()
 
             VStack(spacing: 24) {
-                // If you have a Spotify logo asset, name it "SpotifyLogo" in Assets.xcassets
-                Image("SpotifyLogo")
+                Image(systemName: "waveform.circle.fill")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 80, height: 80)
+                    .foregroundColor(.green)
                     .shadow(radius: 4)
 
                 VStack(spacing: 4) {
                     Text("Welcome,")
                         .font(.title2)
-                        .foregroundColor(.textColor.opacity(0.7))
+                        .foregroundColor(.textSecondary)
                     Text(email)
                         .font(.largeTitle)
                         .fontWeight(.bold)
-                        .foregroundColor(.textColor)
+                        .foregroundColor(.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                        .truncationMode(.middle)
                 }
 
                 Text("Connect your Spotify account to discover and share what you’re listening to.")
                     .font(.subheadline)
-                    .foregroundColor(.textColor.opacity(0.6))
+                    .foregroundColor(.textSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
 
@@ -56,7 +59,7 @@ struct SpotifyLoginView: View {
                 .padding(.horizontal, 32)
             }
             .padding()
-            .background(Color.secondaryPurple.opacity(0.1))
+            .background(Color.appSurface)
             .cornerRadius(20)
             .padding(.horizontal)
         }

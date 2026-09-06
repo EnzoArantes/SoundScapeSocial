@@ -31,7 +31,7 @@ class FriendsViewModel: ObservableObject {
     private var trackListeners = [String: ListenerRegistration]()
     private var myReactionListeners = [String: ListenerRegistration]()
     private var incomingReactionListeners = [String: ListenerRegistration]()
-    private var uid: String { Auth.auth().currentUser?.uid ?? "" }
+    private var uid: String? { Auth.auth().currentUser?.uid }
 
     init() {
         listenForFriends()
@@ -44,6 +44,7 @@ class FriendsViewModel: ObservableObject {
     }
 
     private func listenForFriends() {
+        guard let uid, !uid.isEmpty else { return }
         friendsListener = db.collection("users").document(uid)
             .collection("friends")
             .addSnapshotListener { [weak self] snapshot, error in
@@ -76,6 +77,7 @@ class FriendsViewModel: ObservableObject {
     }
 
     private func listenForTrackUpdates(friendID: String) {
+        guard !friendID.isEmpty else { return }
         trackListeners[friendID]?.remove()
         let listener = db
           .collection("public_tracks")
@@ -106,6 +108,7 @@ class FriendsViewModel: ObservableObject {
     }
 
     private func listenForMyReaction(friendID: String) {
+        guard let uid, !uid.isEmpty, !friendID.isEmpty else { return }
         myReactionListeners[friendID]?.remove()
         myReactionListeners[friendID] = db.collection("users").document(friendID)
             .collection("reactions").document(uid)
@@ -122,6 +125,7 @@ class FriendsViewModel: ObservableObject {
     }
 
     private func listenForIncomingReaction(friendID: String) {
+        guard let uid, !uid.isEmpty, !friendID.isEmpty else { return }
         incomingReactionListeners[friendID]?.remove()
         incomingReactionListeners[friendID] = db.collection("users").document(uid)
             .collection("reactions").document(friendID)
@@ -138,22 +142,25 @@ class FriendsViewModel: ObservableObject {
     }
 
     func addFriend(byEmail email: String) {
+        guard let uid, !uid.isEmpty else { return }
         db.collection("users").whereField("email", isEqualTo: email)
             .getDocuments { [weak self] snapshot, error in
                 guard let self = self, error == nil, let doc = snapshot?.documents.first else { return }
                 let friendID = doc.documentID
-                self.db.collection("users").document(self.uid)
+                guard !friendID.isEmpty else { return }
+                self.db.collection("users").document(uid)
                     .collection("friends").document(friendID)
                     .setData(["email": email], merge: true)
                 if let myEmail = Auth.auth().currentUser?.email {
                     self.db.collection("users").document(friendID)
-                        .collection("friends").document(self.uid)
+                        .collection("friends").document(uid)
                         .setData(["email": myEmail], merge: true)
                 }
             }
     }
 
     func react(to friendID: String, reaction: ReactionType) {
+        guard let uid, !uid.isEmpty, !friendID.isEmpty else { return }
         db.collection("users").document(friendID)
             .collection("reactions").document(uid)
             .setData([
@@ -172,7 +179,7 @@ struct FriendsView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color.backgroundDark
+                Color.appBackground
                     .ignoresSafeArea()
 
                 ScrollView {
@@ -225,12 +232,12 @@ struct FriendCardView: View {
                     .frame(maxWidth: .infinity)
             } else {
                 Circle()
-                    .fill(Color.secondaryPurple)
+                    .fill(Color.brandFill)
                     .frame(width: 120, height: 120)
                     .overlay(
                         Image(systemName: "questionmark")
                             .font(.largeTitle)
-                            .foregroundColor(.textColor)
+                            .foregroundColor(.onBrand)
                     )
                     .frame(maxWidth: .infinity)
             }
@@ -239,11 +246,11 @@ struct FriendCardView: View {
             if let track = friend.track {
                 Text(track.name)
                     .font(.headline)
-                    .foregroundColor(.textColor)
+                    .foregroundColor(.textPrimary)
                     .lineLimit(1)
                 Text(track.artist)
                     .font(.subheadline)
-                    .foregroundColor(.textColor.opacity(0.8))
+                    .foregroundColor(.textSecondary)
                     .lineLimit(1)
             }
 
@@ -252,10 +259,10 @@ struct FriendCardView: View {
                 HStack(spacing: 6) {
                     Text("They reacted:")
                         .font(.subheadline).bold()
-                        .foregroundColor(.textColor)
+                        .foregroundColor(.textPrimary)
                     Image(systemName: iconName(for: their, filled: true))
                         .font(.title2)
-                        .foregroundColor(.accentColor)
+                        .foregroundColor(.brandAccent)
                 }
             }
 
@@ -263,7 +270,7 @@ struct FriendCardView: View {
             myReactions
         }
         .padding()
-        .background(Color.backgroundDark.opacity(0.8))
+        .background(Color.appSurface)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
     }
@@ -284,7 +291,7 @@ struct FriendCardView: View {
         } label: {
             Image(systemName: iconName(for: type, filled: isSelected))
                 .font(.title)
-                .foregroundColor(isSelected ? .accentColor : .textColor)
+                .foregroundColor(isSelected ? .brandAccent : .textSecondary)
         }
     }
 

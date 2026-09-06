@@ -19,7 +19,8 @@ class SpotifyAuthManager: NSObject, ObservableObject, SPTSessionManagerDelegate 
         let scopes: SPTScope = [
             .userReadCurrentlyPlaying,
             .userReadPlaybackState,
-            .userLibraryModify   // new
+            .userLibraryModify,
+            .userTopRead        // needed for /v1/me/top/{artists,tracks}
         ]
         sessionManager.initiateSession(
             with: scopes,
@@ -29,7 +30,7 @@ class SpotifyAuthManager: NSObject, ObservableObject, SPTSessionManagerDelegate 
     }
     
     func sessionManager(manager: SPTSessionManager, didInitiate session: SPTSession) {
-        print("✅ Spotify session initiated. Access token: \(session.accessToken)")
+        print("✅ Spotify session initiated.")
         DispatchQueue.main.async {
             self.accessToken = session.accessToken
         }

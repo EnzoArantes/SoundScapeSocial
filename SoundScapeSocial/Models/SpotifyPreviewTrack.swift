@@ -9,7 +9,10 @@ struct SpotifyPreviewTrack: Identifiable, Codable {
     
     let uri: String
     var externalURL: URL? {
-        URL(string: "spotify:track:\(uri.split(separator: ":").last!)")
+        guard let trackID = uri.split(separator: ":").last, !trackID.isEmpty else {
+            return nil
+        }
+        return URL(string: "spotify:track:\(trackID)")
     }
     
     struct Artist: Codable { let name: String }
